@@ -8,7 +8,7 @@ class LLM:
     This class encapsulates the specific API calls, making it easy to
     switch between different models or providers in the future.
     """
-    def __init__(self, model_name: str, client: genai.Client):
+    def __init__(self, model_name: str,client: genai.Client, fallback_model_name: str = "gemini-2.5-flash" ):
         """
         Initializes the LLM.
 
@@ -17,6 +17,7 @@ class LLM:
             client (genai.Client): The Gemini API client instance.
         """
         self.model_name = model_name
+        self.fallback_model_name = model_name
         self.client = client
 
     def generate_content(self, contents: str):
@@ -31,10 +32,17 @@ class LLM:
         """
         print(f"Calling LLM: {self.model_name}")
         start_time = time.time()
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            contents=contents
-        )
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=contents
+            )
+        except APIError:
+            print(f"Primary model {self.model_name} failed, attempt to call fallback model {self.fallback_model_name}")
+            response = self.client.models.generate_content(
+                model=self.fallback_model_name,
+                contents=contents
+            )
         end_time = time.time()
         print(f"LLM finished responding in {end_time-start_time:.2f} seconds.")
         return response

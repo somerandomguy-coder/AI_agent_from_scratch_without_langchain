@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-import argparse
 from google import genai
 
 from llm_abstraction import LLM
@@ -8,23 +7,6 @@ from base_agent import BaseAgent, JsonOutputParser
 from tools import ToolManager, BaseTool, get_current_time, calculator, Final_Answer
 from agent_executor import AgentExecutor
 from prompt_template import PromptTemplate
-
-parser = argparse.ArgumentParser(description="Program that process command-line arguments")
-parser.add_argument("-p", "--prompt", type=str, help="prompt for agent")
-parser.add_argument("-i", "--iteration", type=int, default=1 , help="number of call to AI agent")
-parser.add_argument("-d", "--dev_mode", action="store_true", help="enable dev mode")
-parser.add_argument("-t", "--task", action="store_true", help="enable tool calling for agent (output as json)")
-
-args = parser.parse_args()
-
-if args.dev_mode:
-    print("Running in dev mode~")
-if args.task:
-    print("Agent planing for task~")
-if args.prompt:
-    print("Prompt is processing by agent")
-else:
-    assert False, "You need to write some prompt in" 
 
 
 load_dotenv()
@@ -37,11 +19,10 @@ except Exception as e:
     exit()
 
 if __name__ == "__main__":
-    model_name="gemini-2.0-flash"
-    fallback_model_name="gemini-2.5-flash"
     print("--- Initializing AI Agent Framework ---")
+
     # 1. Initialize the LLM Abstraction Layer
-    llm = LLM(model_name=model_name,fallback_model_name=fallback_model_name, client=client)
+    llm = LLM(model_name="gemini-2.0-flash", client=client)
 
     # 2. Register Tools with the ToolManager
     tool_manager = ToolManager()
@@ -57,24 +38,28 @@ if __name__ == "__main__":
     prompt_template = PromptTemplate(
         system_prompt=f"""
 You are a brilliant computational agent. Your job is to solve complex problems by creating a series of tool calls.
+If you're not confident with your answer, say you're not confident along with the answer.
 You have access to the following tools:
 {tool_descriptions}
 """,
         user_input="{user_input}",
         history="{history}"
-        )
+    )
 
     # 4. Create the Agent with the LLM
     agent = BaseAgent(llm=llm)
 
     # 5. Initialize the AgentExecutor with the Agent and ToolManager
-    executor = AgentExecutor(agent=agent, tool_manager=tool_manager, prompt_template=prompt_template,max_iterations=args.iteration, dev_mode=args.dev_mode, json_output=args.task)
+    executor = AgentExecutor(agent=agent, tool_manager=tool_manager, prompt_template=prompt_template,max_iterations=1, dev_mode=True, json_output=True)
 
     print("\n--- Framework Initialized. Running Demo Task ---")
 
-    user_prompt = args.prompt
+    # This prompt requires the agent to use two tools in a specific sequence.
+    # It must search for the current year and then add 20 to that year.
+    user_prompt = "What is the year 20 years from now?"
 
     # 6. Run the AgentExecutor
     final_output = executor.run(user_prompt)
-    print("\n--- Task Complete ---")
-    print(f"Result: {final_output}")
+
+    assert "2045" in final_output, "wrong answer for eval 1"
+    print("\n--- Evaluation Complete ---")

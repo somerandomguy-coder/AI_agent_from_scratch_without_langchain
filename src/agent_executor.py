@@ -60,6 +60,9 @@ class AgentExecutor:
 
             try:
                 response_plan = self.agent.run(formatted_prompt)
+                
+                if isinstance(response_plan, str):
+                    return response_plan
 
                 if self.dev_mode:
                     print("Agent's Plan Received:")
@@ -89,8 +92,8 @@ class AgentExecutor:
                     if self.dev_mode:
                         print(f"    Tool output stored as '{result_id}': {tool_output} \n")
 
-                    # if tool_name == "Final_Answer":
-                    #     return tool_output
+                    if tool_name == "Final_Answer":
+                        return tool_output
 
                 current_input = f"User input: {user_input}, Response plan: {response_plan}, Iteration: {i}/{self.max_iterations}, Context board: {self.context}. Please continue with the plan. If the final answer has reached and have no problem, return a list of action with only one action name 'Terminate'"
 
