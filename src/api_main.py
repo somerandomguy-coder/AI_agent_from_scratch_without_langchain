@@ -12,10 +12,23 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "*"
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -76,8 +89,11 @@ async def query(query:Query):
         user_prompt = query.prompt
     
         # 6. Run the AgentExecutor
-        final_output = executor.run(user_prompt)
+        final_output, response_obj= executor.run(user_prompt)
         print("\n--- Task Complete ---")
         print(f"Result: {final_output}")
-        return JSONResponse(content={"message":final_output},
+        return JSONResponse(content={"output":final_output, 
+                                     "duration":response_obj["duration"],
+                                     "token_usage": response_obj["token_usage"],
+                                     "plan": response_obj["content"]},
                             status_code=200)

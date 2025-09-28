@@ -44,9 +44,13 @@ class BaseAgent:
         print("Agent is running, vroom vroom!")
 
         # The LLM call is now handled by the LLM abstraction class.
-        response = self.llm.generate_content(contents=prompt)
+        response, responding_time= self.llm.generate_content(contents=prompt)
 
         # Now, we use the parser before returning the output.
         print(f"Total token usage: {response.usage_metadata.total_token_count}")
-        return self.parser.parse(response.text)
+        response_text = self.parser.parse(response.text)
+        response_obj = {"content":response_text,
+                        "duration": responding_time,
+                        "token_usage": response.usage_metadata.total_token_count}
+        return response_obj
 

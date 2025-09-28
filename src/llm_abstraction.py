@@ -44,5 +44,6 @@ class LLM:
                 contents=contents
             )
         end_time = time.time()
+        responding_time = end_time-start_time
         print(f"LLM finished responding in {end_time-start_time:.2f} seconds.")
-        return response
+        return response, responding_time

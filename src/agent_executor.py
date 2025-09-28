@@ -59,10 +59,10 @@ class AgentExecutor:
                 print(f"Agent's Input Prompt: {formatted_prompt}")
 
             try:
-                response_plan = self.agent.run(formatted_prompt)
-                
+                response_obj = self.agent.run(formatted_prompt)
+                response_plan = response_obj["content"]
                 if isinstance(response_plan, str):
-                    return response_plan
+                    return response_plan, response_obj
 
                 if self.dev_mode:
                     print("Agent's Plan Received:")
@@ -78,7 +78,7 @@ class AgentExecutor:
                     result_id = action.get("result_id")
 
                     if tool_name == "Terminate":
-                        return "Task has finished within the iteration." + self.context.get("final_result")
+                        return "Task has finished within the iteration." + self.context.get("final_result"), response_obj
 
                     resolved_input = self._resolve_dependencies(action_input)
 
@@ -93,7 +93,7 @@ class AgentExecutor:
                         print(f"    Tool output stored as '{result_id}': {tool_output} \n")
 
                     if tool_name == "Final_Answer":
-                        return tool_output
+                        return tool_output, response_obj
 
                 current_input = f"User input: {user_input}, Response plan: {response_plan}, Iteration: {i}/{self.max_iterations}, Context board: {self.context}. Please continue with the plan. If the final answer has reached and have no problem, return a list of action with only one action name 'Terminate'"
 
@@ -101,7 +101,7 @@ class AgentExecutor:
                 print(f"An error occurred during execution: {e}")
                 return f"I encountered an error and could not complete the task: {e}"
 
-        return "Max iterations reached without a final answer."
+        return "Max iterations reached without a final answer.", response_obj
 
     def _resolve_dependencies(self, action_input: Any) -> List:
         """

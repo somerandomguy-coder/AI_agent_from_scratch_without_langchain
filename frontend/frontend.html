@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Agent Chat Frontend</title>
+    <!-- Tải Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Thiết lập font Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f4f6f8;
+        }
+        #chat-container {
+            /* Tính toán chiều cao linh hoạt, trừ đi header và footer */
+            height: calc(100vh - 120px); 
+            overflow-y: auto;
+        }
+        /* Custom scrollbar cho đẹp */
+        #chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen flex flex-col antialiased">
+        
+        <!-- Thanh Tiêu đề (Header) -->
+        <header class="sticky top-0 bg-white shadow-lg z-10 p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center max-w-7xl mx-auto">
+                <h1 class="text-2xl font-bold text-indigo-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-indigo-500"><path d="M4 17l4-4h6l-4 4-2 2H4zM20 7l-4 4h-6l4-4 2-2h4zM12 12V3M12 21V12"/></svg>
+                    Agent Backend Chat
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <span id="backend-status" class="px-3 py-1 text-sm font-medium rounded-full transition duration-300 shadow-inner">
+                        Đang kết nối...
+                    </span>
+                    <button id="config-button" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition duration-150 shadow-md" title="Cấu hình Tham số Agent">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.44a2 2 0 0 1-2 2h-.44a2 2 0 0 0-2 2v.44a2 2 0 0 1-2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2-2v-.44a2 2 0 0 0 2-2v-.44a2 2 0 0 1 2-2v-.44a2 2 0 0 0 2-2v-.44a2 2 0 0 1-2-2v-.44a2 2 0 0 0-2-2h-.44a2 2 0 0 1-2-2v-.44a2 2 0 0 0-2-2h-.44a2 2 0 0 1-2-2V4a2 2 0 0 0-2-2zm-1.56 5.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Nội dung Chat -->
+        <main id="chat-container" class="flex-grow max-w-7xl mx-auto w-full p-6">
+            <div id="messages-list" class="flex flex-col space-y-4 pt-2 pb-4">
+                <div id="initial-message" class="text-center text-gray-600 p-10 bg-white rounded-2xl shadow-md border border-gray-100">
+                    <h3 class="text-xl font-semibold mb-2 text-indigo-600">Sẵn sàng!</h3>
+                    <p class="mb-3">Agent đã được kết nối. Hãy nhập câu hỏi và theo dõi quá trình thực thi chi tiết ở phản hồi.</p>
+                    <p class="text-xs text-gray-400">Nhấn biểu tượng bánh răng để xem/thay đổi các tham số Agent.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Thanh Input (Footer) -->
+        <div class="sticky bottom-0 bg-white border-t border-gray-200 p-4 shadow-2xl">
+            <form id="chat-form" class="max-w-7xl mx-auto flex gap-4">
+                <input
+                    type="text"
+                    id="user-input"
+                    placeholder="Nhập yêu cầu của bạn..."
+                    class="flex-grow p-4 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 disabled:bg-gray-50"
+                    autocomplete="off"
+                />
+                <button
+                    type="submit"
+                    id="send-button"
+                    class="p-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/50 disabled:bg-gray-400 disabled:shadow-none"
+                >
+                    <svg id="send-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    <svg id="loader-icon" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                </button>
+            </form>
+        </div>
+
+        <!-- Panel Cấu hình (Modal) -->
+        <div id="config-panel" class="fixed inset-0 z-50 opacity-0 invisible transition-opacity duration-300 bg-gray-900/50 flex items-start justify-center pt-20 backdrop-blur-sm">
+            <div id="config-modal" class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-transform duration-300 scale-95">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    Tham số Agent Backend
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="iteration-input" class="block text-sm font-medium text-gray-700">Số lần Lặp (Iteration)</label>
+                        <input type="number" id="iteration-input" min="1" max="10" value="1" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
+                        <p class="text-xs text-gray-500 mt-1">Số bước tối đa Agent có thể thực hiện (1-10).</p>
+                    </div>
+                    <div>
+                        <label for="dev-mode-input" class="flex items-center text-sm font-medium text-gray-700">
+                            <input type="checkbox" id="dev-mode-input" class="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2" />
+                            Chế độ Phát triển (Dev Mode)
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Nếu bật, Agent có thể cung cấp thêm thông tin debug.</p>
+                    </div>
+                    <div>
+                        <label for="task-input" class="flex items-center text-sm font-medium text-gray-700">
+                            <input type="checkbox" id="task-input" class="h-4 w-4 text-indigo-600 border-gray-300 rounded mr-2" />
+                            Định hướng Nhiệm vụ (Task Focused)
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Nếu bật, Agent tập trung vào việc hoàn thành nhiệm vụ hơn là trò chuyện.</p>
+                    </div>
+                </div>
+
+                <button
+                    id="save-config-button"
+                    class="mt-6 w-full py-3 rounded-xl font-semibold transition-all duration-200 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/50"
+                >
+                    Đóng
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CẤU HÌNH API BACKEND ---
+        // Thay đổi cổng (port) và tên miền (domain) nếu backend của bạn chạy ở nơi khác
+        const API_BASE_URL = "http://127.0.0.1:8000"; 
+        const CONNECT_URL = `${API_BASE_URL}/`;
+        const QUERY_URL = `${API_BASE_URL}/query`;
+
+        // --- DOM ELEMENTS ---
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const messagesList = document.getElementById('messages-list');
+        const initialMessage = document.getElementById('initial-message');
+        const sendButton = document.getElementById('send-button');
+        const sendIcon = document.getElementById('send-icon');
+        const loaderIcon = document.getElementById('loader-icon');
+        const chatContainer = document.getElementById('chat-container');
+        const backendStatus = document.getElementById('backend-status');
+        const configPanel = document.getElementById('config-panel');
+        const configButton = document.getElementById('config-button');
+        const configModal = document.getElementById('config-modal');
+        const saveConfigButton = document.getElementById('save-config-button');
+        
+        // Input cấu hình
+        const iterationInput = document.getElementById('iteration-input');
+        const devModeInput = document.getElementById('dev-mode-input');
+        const taskInput = document.getElementById('task-input');
+
+        // --- TRẠNG THÁI ---
+        let isLoading = false;
+        let isBackendConnected = false;
+
+        // --- UTILITIES ---
+
+        // Hàm cập nhật trạng thái UI và nút
+        const updateUIState = () => {
+            userInput.disabled = isLoading || !isBackendConnected;
+            sendButton.disabled = isLoading || !isBackendConnected || !userInput.value.trim();
+
+            if (isLoading) {
+                sendButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                sendButton.classList.add('bg-gray-400');
+                sendIcon.classList.add('hidden');
+                loaderIcon.classList.remove('hidden');
+            } else {
+                sendButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                sendButton.classList.remove('bg-gray-400');
+                sendIcon.classList.remove('hidden');
+                loaderIcon.classList.add('hidden');
+            }
+        };
+
+        // Hàm cuộn xuống dưới cùng của khung chat
+        const scrollToBottom = () => {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        };
+        
+        // --- XỬ LÝ LỖI VÀ TRẠNG THÁI KẾT NỐI ---
+
+        // Hàm kiểm tra kết nối Backend
+        const checkBackendConnection = async () => {
+            try {
+                const response = await fetch(CONNECT_URL, { method: 'GET' });
+                
+                if (response.ok) {
+                    let text = await response.text();
+			text = JSON.parse(text);
+			console.log(text);
+			console.log(typeof text);
+			console.log(text.message);
+                    if (text.message == "Connect Succesful!") {
+                        isBackendConnected = true;
+                        backendStatus.textContent = 'Đã kết nối!';
+                        backendStatus.classList.remove('bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                        backendStatus.classList.add('bg-green-100', 'text-green-800');
+                        userInput.placeholder = "Nhập yêu cầu của bạn...";
+                        console.log("Kết nối Backend thành công.");
+                    } else {
+                        throw new Error("Phản hồi không chứa 'connect successful'");
+                    }
+                } else {
+                    throw new Error(`Lỗi HTTP ${response.status}`);
+                }
+            } catch (error) {
+                isBackendConnected = false;
+                backendStatus.textContent = 'Mất kết nối!';
+                backendStatus.classList.remove('bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800');
+                backendStatus.classList.add('bg-red-100', 'text-red-800');
+                userInput.placeholder = "LỖI: Không thể kết nối Backend.";
+                console.error("Lỗi kết nối Backend:", error);
+            }
+            updateUIState();
+        };
+
+        // --- XÂY DỰNG UI TIN NHẮN (MESSAGE UI BUILDER) ---
+
+        /**
+         * Tạo phần tử HTML cho tin nhắn Agent, bao gồm metadata chi tiết có thể thu gọn.
+         * @param {string} output - Phản hồi chính từ Agent.
+         * @param {string} plan - Kế hoạch thực thi.
+         * @param {number} duration - Thời gian thực thi (ms).
+         * @param {number} tokenUsage - Số lượng token đã sử dụng.
+         */
+        const createAgentMessageElement = (output, plan, duration, tokenUsage) => {
+            // Định dạng thời gian
+            const durationSeconds = (duration).toFixed(2);
+
+            const div = document.createElement('div');
+            div.className = 'flex justify-start';
+            
+            const messageHtml = `
+                <div class="max-w-4xl p-4 rounded-xl rounded-tl-none bg-white text-gray-800 shadow-md border border-gray-100 transition duration-300">
+                    <!-- Header -->
+                    <div class="flex items-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600 mr-2"><path d="M4 17l4-4h6l-4 4-2 2H4zM20 7l-4 4h-6l4-4 2-2h4zM12 12V3M12 21V12"/></svg>
+                        <span class="font-semibold text-indigo-700">Agent Backend</span>
+                    </div>
+
+                    <!-- Output chính -->
+                    <p class="whitespace-pre-wrap">${output}</p>
+
+                    <!-- Vùng Metadata có thể thu gọn (Tinh tế) -->
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <button class="toggle-details text-xs font-medium text-gray-500 hover:text-indigo-600 flex items-center transition duration-150 group">
+                            Chi tiết thực thi 
+                            <span class="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-700">
+                                ${durationSeconds}s | ${tokenUsage} tokens
+                            </span>
+                            <svg class="w-4 h-4 ml-1 transition-transform transform rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        
+                        <div class="details-content mt-2 hidden">
+                            <h4 class="text-sm font-bold text-gray-700 mb-1">Kế hoạch Agent (Plan)</h4>
+                            <pre class="bg-gray-50 p-3 rounded-lg text-xs overflow-auto border border-gray-200 text-gray-600 whitespace-pre-wrap">${JSON.stringify(plan)}</pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+            div.innerHTML = messageHtml.trim();
+
+            // Thêm Event Listener cho nút toggle
+            const toggleButton = div.querySelector('.toggle-details');
+            const detailsContent = div.querySelector('.details-content');
+            const toggleIcon = div.querySelector('svg:last-child');
+            
+            toggleButton.addEventListener('click', () => {
+                const isHidden = detailsContent.classList.contains('hidden');
+                if (isHidden) {
+                    detailsContent.classList.remove('hidden');
+                    toggleIcon.classList.add('rotate-180');
+                } else {
+                    detailsContent.classList.add('hidden');
+                    toggleIcon.classList.remove('rotate-180');
+                }
+            });
+
+            return div.firstChild;
+        };
+
+        /**
+         * Tạo phần tử HTML cho tin nhắn Người dùng hoặc Lỗi.
+         */
+        const createSimpleMessageElement = (role, text) => {
+            const isUser = role === 'user';
+            const isError = role === 'error';
+
+            const alignment = isUser ? 'justify-end' : 'justify-start';
+            let bgColor = isUser ? 'bg-indigo-500/10' : 'bg-red-500/10 shadow-lg';
+            let textColor = isUser ? 'text-indigo-800' : 'text-red-800';
+            let name = isUser ? 'Bạn' : 'LỖI HỆ THỐNG';
+            let iconSvg = isUser 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' 
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            
+            const messageHtml = `
+                <div class="flex ${alignment} mb-4">
+                    <div class="max-w-4xl p-4 rounded-xl ${isUser ? 'rounded-tr-none' : 'rounded-tl-none'} ${bgColor} ${textColor} shadow-md transition duration-300">
+                        <div class="flex items-center mb-2">
+                            ${iconSvg}
+                            <span class="font-semibold ml-2">${name}</span>
+                        </div>
+                        <p class="whitespace-pre-wrap">${text}</p>
+                    </div>
+                </div>
+            `;
+            const div = document.createElement('div');
+            div.innerHTML = messageHtml.trim();
+            return div.firstChild;
+        };
+
+        const appendMessage = (role, text, metadata = null) => {
+            // Xóa tin nhắn ban đầu nếu có tin nhắn mới
+            if (messagesList.contains(initialMessage)) {
+                initialMessage.remove();
+            }
+            
+            let element;
+            if (role === 'agent' && metadata) {
+                element = createAgentMessageElement(metadata.output, metadata.plan, metadata.duration, metadata.token_usage);
+            } else {
+                element = createSimpleMessageElement(role, text);
+            }
+
+            messagesList.appendChild(element);
+            scrollToBottom();
+        };
+
+        // --- LOGIC XỬ LÝ CHAT ---
+
+        const handleSendMessage = async (e) => {
+            e.preventDefault();
+            const userMessage = userInput.value.trim();
+            
+            if (!userMessage || isLoading || !isBackendConnected) return;
+
+            // 1. Hiển thị tin nhắn người dùng
+            appendMessage('user', userMessage);
+            const userPrompt = userMessage;
+            userInput.value = '';
+            
+            isLoading = true;
+            updateUIState();
+
+            try {
+                // 2. Lấy tham số cấu hình từ UI
+                const payload = {
+                    prompt: userPrompt,
+                    iteration: parseInt(iterationInput.value) || 1,
+                    dev_mode: devModeInput.checked,
+                    task: taskInput.checked
+                };
+                
+                // 3. Gọi API Backend
+                const response = await fetch(QUERY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `Lỗi HTTP ${response.status} khi truy vấn.`);
+                }
+
+                // 4. Xử lý phản hồi JSON
+                const result = await response.json();
+                const { output, duration, token_usage, plan } = result;
+
+                if (!output) {
+                    throw new Error("Phản hồi hợp lệ nhưng thiếu trường 'output'.");
+                }
+
+                // 5. Hiển thị tin nhắn Agent với Metadata
+                appendMessage('agent', null, { 
+                    output, 
+                    plan: plan || "Không có kế hoạch được cung cấp.", 
+                    duration: duration || 0, 
+                    token_usage: token_usage || 0 
+                });
+
+            } catch (error) {
+                appendMessage('error', `Không thể nhận phản hồi từ Agent Backend. Chi tiết: ${error.message}`);
+            } finally {
+                isLoading = false;
+                updateUIState();
+            }
+        };
+
+        // --- EVENT LISTENERS ---
+
+        // Xử lý gửi form
+        chatForm.addEventListener('submit', handleSendMessage);
+        
+        // Cập nhật trạng thái nút Gửi khi người dùng nhập liệu
+        userInput.addEventListener('input', updateUIState);
+
+        // Xử lý mở Modal Cấu hình
+        configButton.addEventListener('click', () => {
+            configPanel.classList.remove('invisible', 'opacity-0');
+            configPanel.classList.add('visible', 'opacity-100');
+            configModal.classList.remove('scale-95');
+            configModal.classList.add('scale-100');
+        });
+
+        // Xử lý đóng Modal Cấu hình
+        saveConfigButton.addEventListener('click', () => {
+            configPanel.classList.remove('visible', 'opacity-100');
+            configPanel.classList.add('invisible', 'opacity-0');
+            configModal.classList.remove('scale-100');
+            configModal.classList.add('scale-95');
+        });
+
+        // Ngăn chặn đóng modal khi click bên trong, cho phép đóng khi click bên ngoài panel
+        configModal.addEventListener('click', (e) => e.stopPropagation());
+        configPanel.addEventListener('click', () => saveConfigButton.click());
+
+
+        // --- KHỞI TẠO ---
+        window.onload = () => {
+            // 1. Kiểm tra kết nối Backend ngay khi tải trang
+            checkBackendConnection();
+        };
+
+    </script>
+</body>
+</html>
+
