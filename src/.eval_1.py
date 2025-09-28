@@ -59,7 +59,7 @@ You have access to the following tools:
     user_prompt = "What is the year 20 years from now?"
 
     # 6. Run the AgentExecutor
-    final_output = executor.run(user_prompt)
+    final_output, _ = executor.run(user_prompt)
 
     assert "2045" in final_output, "wrong answer for eval 1"
     print("\n--- Evaluation Complete ---")

@@ -88,7 +88,8 @@ def calculator(operation: str, *args):
     """
 
     # We'll use a simple, safe set of operations
-
+    for num in args:
+        num = int(num)
     if operation == 'add':
         return sum(args)
     elif operation == 'subtract':
