@@ -8,70 +8,37 @@ from tools import ToolManager, BaseTool, get_current_time, calculator, Final_Ans
 from agent_executor import AgentExecutor
 from prompt_template import PromptTemplate
 
+
 load_dotenv()
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+try:
+    client = genai.Client()
+except Exception as e:
+    print(f"Error initializing Gemini client: {e}")
+    print("Please make sure you have the GEMINI_API_KEY environment variable set.")
+    exit()
 
-app = FastAPI()
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "*"
-]
+if __name__ == "__main__":
+    print("--- Initializing AI Agent Framework ---")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    # 1. Initialize the LLM Abstraction Layer
+    llm = LLM(model_name="gemini-2.0-flash", client=client)
 
-@app.get("/")
-async def root():
-    return JSONResponse(content={"message": "Connect Succesful!"},
-                        status_code=200)
+    # 2. Register Tools with the ToolManager
+    tool_manager = ToolManager()
+    calculator_tool = BaseTool(name="calculator", func=calculator)
+    get_time_tool = BaseTool(name="get_time", func=get_current_time)
+    final_answer = BaseTool(name="Final_Answer", func=Final_Answer)
+    run_sql_query_tool = BaseTool(name="run_sql_query", func=run_sql_query)
+    tool_manager.add_tool(run_sql_query_tool)
+    tool_manager.add_tool(get_time_tool)
+    tool_manager.add_tool(calculator_tool)
+    tool_manager.add_tool(final_answer)
 
-class Query(BaseModel):
-    prompt: str
-    iteration: int = 1
-    dev_mode: bool = False
-    task: bool = False
-
-@app.post("/query")
-async def query(query:Query):
-    try:
-        client = genai.Client()
-    except Exception as e:
-        print(f"Error initializing Gemini client: {e}")
-        print("Please make sure you have the GEMINI_API_KEY environment variable set.")
-        exit()
-
-    if query:
-        model_name="gemini-2.0-flash"
-        fallback_model_name="gemini-2.5-flash"
-        print("--- Initializing AI Agent Framework ---")
-        # 1. Initialize the LLM Abstraction Layer
-        llm = LLM(model_name=model_name,fallback_model_name=fallback_model_name, client=client)
-    
-        # 2. Register Tools with the ToolManager
-        tool_manager = ToolManager()
-        calculator_tool = BaseTool(name="calculator", func=calculator)
-        get_time_tool = BaseTool(name="get_time", func=get_current_time)
-        final_answer = BaseTool(name="Final_Answer", func=Final_Answer)
-        run_sql_query_tool = BaseTool(name="run_sql_query", func=run_sql_query)
-        tool_manager.add_tool(run_sql_query_tool)
-        tool_manager.add_tool(get_time_tool)
-        tool_manager.add_tool(calculator_tool)
-        tool_manager.add_tool(final_answer)
-    
-        # 3. Create the Prompt Template to inform the agent about its tools
-        tool_descriptions = "\n".join([f"- {tool.name}: {tool.description}" for tool in tool_manager.get_all_tools()])
-        prompt_template = PromptTemplate(
-            system_prompt=f"""
+    # 3. Create the Prompt Template to inform the agent about its tools
+    tool_descriptions = "\n".join([f"- {tool.name}: {tool.description}" for tool in tool_manager.get_all_tools()])
+    prompt_template = PromptTemplate(
+        system_prompt=f"""
 Bạn là một trợ lý phân tích dữ liệu chuyên nghiệp. Nhiệm vụ của bạn là giải quyết các vấn đề phức tạp bằng cách tạo ra một chuỗi các lệnh gọi công cụ.
 
 Cấu trúc Dữ liệu
@@ -114,27 +81,24 @@ Bạn có quyền truy cập vào các công cụ sau:
 
 Hãy tự tin với câu trả lời của mình và luôn đưa ra kết quả cuối cùng mà bạn có
 Bạn phải cung cấp một kế hoạch giải quyết hoàn toàn yêu cầu của người dùng.
-    """,
-            user_input="{user_input}",
-            history="{history}"
-            )
-    
-        # 4. Create the Agent with the LLM
-        agent = BaseAgent(llm=llm)
-    
-        # 5. Initialize the AgentExecutor with the Agent and ToolManager
-        executor = AgentExecutor(agent=agent, tool_manager=tool_manager, prompt_template=prompt_template,max_iterations=query.iteration, dev_mode=query.dev_mode, json_output=query.task)
-    
-        print("\n--- Framework Initialized. Running Demo Task ---")
-    
-        user_prompt = query.prompt
-    
-        # 6. Run the AgentExecutor
-        final_output, response_obj= executor.run(user_prompt)
-        print("\n--- Task Complete ---")
-        print(f"Result: {final_output}")
-        return JSONResponse(content={"output":final_output, 
-                                     "duration":response_obj["duration"],
-                                     "token_usage": response_obj["token_usage"],
-                                     "plan": response_obj["content"]},
-                            status_code=200)
+""",
+        user_input="{user_input}",
+        history="{history}"
+    )
+
+    # 4. Create the Agent with the LLM
+    agent = BaseAgent(llm=llm)
+
+    # 5. Initialize the AgentExecutor with the Agent and ToolManager
+    executor = AgentExecutor(agent=agent, tool_manager=tool_manager, prompt_template=prompt_template,max_iterations=1, dev_mode=True, json_output=True)
+
+    print("\n--- Framework Initialized. Running Demo Task ---")
+
+    # This prompt requires the agent to use two tools in a specific sequence.
+    user_prompt = "Công nợ sau tháng 2 năm nay là bao nhiêu?"
+
+    # 6. Run the AgentExecutor
+    final_output, _ = executor.run(user_prompt)
+
+    assert "31500082" in final_output, "wrong answer for eval 2"
+    print("\n--- Evaluation Complete ---")
